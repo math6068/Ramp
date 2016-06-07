@@ -22,7 +22,7 @@ typedef long long LL;
 
 #define dec_hard_weight_mode
 
-//#define bad_var_cscc_mode
+#define bad_var_cscc_mode
 
 #define score_make_mode
 
@@ -222,12 +222,12 @@ int build_instance(char *filename)
 	sat_n = new int[clause_n+2];
 	sat_var = new int[clause_n+2];
 
-	ptr_to_c0 = new Bijection(clause_n+2);
-	pHeapGreedyCand = new HeapGreedyCand(heap_worse, var_n+2);
-	ptr_to_ans = new Bijection(var_n+2);
+	ptr_to_c0 = new Bijection(clause_n);
+	pHeapGreedyCand = new HeapGreedyCand(heap_worse, var_n);
+	ptr_to_ans = new Bijection(var_n);
 
 #ifdef bad_var_cscc_mode
-	ptr_to_bad_var = new Bijection(var_n+2);
+	ptr_to_bad_var = new Bijection(var_n);
 #endif
 
 	value = new int[var_n+2];
@@ -349,7 +349,7 @@ void build_neighbor_relation()
 		neighbor_flap_use_n = 0;
 	}
 	
-	delete[] neighbor_flag; neighbor_flag=NULL;
+	delete[] neighbor_flag; neighbor_flag = NULL;
 	delete[] neighbor_flap_use; neighbor_flap_use = NULL;
 }
 
@@ -560,7 +560,6 @@ print_solution();
 				cout << "init score_make heap failure" << endl;
 				exit(1);
 			}
-			cout << "init score_make heap failure" << endl;
 #endif
 	//setting for the virtual var 0
 	last_flip_time[0] = 0;
@@ -681,30 +680,110 @@ void flip_3SAT(int flipvar)
 #endif
 		last_flip_time[flipvar] = step;
 
+#ifdef debug_mode
+cout << "flipvar: " << flipvar << endl;
+cout << "location of flipvar " << flipvar << " in heap: " << pHeapGreedyCand->index_of(flipvar) << endl;
+#endif
+
 	if(pHeapGreedyCand->element_in(flipvar))	
 	{
 		if(score_make[flipvar] <= 0)
 		{
 			pHeapGreedyCand->heap_del(flipvar);
+#ifdef debug_mode
+if(!pHeapGreedyCand->check_map())
+{
+	cout << "a. heap error at step " << step << endl;
+	exit(1);
+}
+#endif	
 		}	
 	#ifdef bad_var_cscc_mode
-		if(ptr_to_bad_var->element_in(flipvar))
+		else if(ptr_to_bad_var->element_in(flipvar))
+		{
+#ifdef debug_mode
+//cout << "bad var deleted..............................." << endl;
+#endif			
 			pHeapGreedyCand->heap_del(flipvar);
+#ifdef debug_mode
+if(!pHeapGreedyCand->check_map())
+{
+	cout << "b. heap error at step " << step << endl;
+	exit(1);
+}
+#endif	
+		}
 	#endif
 		else 
 		{
+#ifdef debug_mode
+if(!pHeapGreedyCand->check_map())
+{
+	cout << "c. heap error at step " << step << endl;
+	exit(1);
+}
+#endif	
 			if(org_flipvar_score < 0)
+			{
+#ifdef debug_mode
+cout << 1 << endl;
+#endif
 				pHeapGreedyCand->heap_up(pHeapGreedyCand->index_of(flipvar));
+			}
 			else 
+			{
+#ifdef debug_mode
+cout << 2 << endl;
+#endif
+#ifdef debug_mode
+if(!pHeapGreedyCand->check_map())
+{
+	cout << "d. heap error at step " << step << endl;
+	exit(1);
+}
+#endif
 				pHeapGreedyCand->heap_down(pHeapGreedyCand->index_of(flipvar));
+#ifdef debug_mode
+if(!pHeapGreedyCand->check_map())
+{
+	cout << "e. heap error at step " << step << endl;
+	exit(1);
+}
+#endif
+			}
+	
 		}
+#ifdef debug_mode
+if(!pHeapGreedyCand->check())
+{
+	cout << "1. heap error at step " << step << endl;
+	exit(1);
+}
+#endif	
 	}
 	else
 	{
+	#ifdef bad_var_cscc_mode
+		if(ptr_to_bad_var->element_in(flipvar))
+		{
+#ifdef debug_mode
+cout << "bad var not inserted..............................." << endl;
+getchar();
+#endif
+		}
+		else
+	#endif
 		if(score_make[flipvar] > 0)
 		{
 			pHeapGreedyCand->heap_add(flipvar);
 		}
+#ifdef debug_mode
+if(!pHeapGreedyCand->check())
+{
+	cout << "2. heap error at step " << step << endl;
+	exit(1);
+}
+#endif	
 	}
 	//update all flipvar's neighbor's conf_change to be 1, add goodvar
 	int *p;
@@ -724,18 +803,44 @@ void flip_3SAT(int flipvar)
 			}
 #ifdef bad_var_cscc_mode
 			else if(ptr_to_bad_var->element_in(v))
-				pHeapGreedyCand->heap_del(v);
+			{
+#ifdef debug_mode
+//cout << "bad var deleted..............................." << endl;
 #endif
+				pHeapGreedyCand->heap_del(v);
+			}
+#endif
+#ifdef debug_mode
+if(!pHeapGreedyCand->check())
+{
+	cout << "3. heap error at step " << step << endl;
+	exit(1);
+}
+#endif	
 		}
 		else
 		{	
 			if(score_make[v] > 0)// && conf_change[v]>0)
 #ifdef bad_var_cscc_mode
-			if(!ptr_to_bad_var->element_in(v))
+			if(ptr_to_bad_var->element_in(v))
+			{
+#ifdef debug_mode
+cout << "bad var not inserted..............................." << endl;
+getchar();
+#endif
+			}
+			else
 #endif
 			{
 				pHeapGreedyCand->heap_add(v);
-			}	
+			}
+#ifdef debug_mode
+if(!pHeapGreedyCand->check())
+{
+	cout << "4. heap error at step " << step << endl;
+	exit(1);
+}
+#endif		
 		}		
 	}	
 }
@@ -751,14 +856,14 @@ int pick_var_3SAT()
 	int         ret = 0;
 	lit			*clause_c;
 
-	if(rand()%10000 < p1 && pHeapGreedyCand->exists_elements())
+	if(rand() % 10000 < p1 && pHeapGreedyCand->exists_elements())
 	{
 		ret = pHeapGreedyCand->top_element();
 #ifdef bad_var_cscc_mode
 		greedy = 1;
 #endif
 #ifdef debug_mode
-cout << "in pick_var_3SAT, having greedliy picked " << ret << endl;
+cout << "in pick_var_3SAT, having greedily picked " << ret << endl;
 #endif	
 		return ret;
 	}
@@ -766,12 +871,17 @@ cout << "in pick_var_3SAT, having greedliy picked " << ret << endl;
 	{
 		c = ptr_to_c0->at(rand() % ptr_to_c0->size() + 1);
 		v = clause_lit[c][rand() % clause_lit_count[c]].var_num;
+
+#ifdef debug_mode
+cout << "in pick_var_3SAT, having randomly picked " << v << endl;
+#endif	
 #ifdef bad_var_cscc_mode
 		// only consider those increasing variables flipped in the greedy mode as bad vars
 		if(ptr_to_bad_var->element_in(v))
 		{								
 			ptr_to_bad_var->delete_element(v);
-		}		
+		}
+		//if(!ptr_to_bad_var->element_in(v));	
 		greedy = 0;
 #endif
 		return v;
@@ -843,7 +953,7 @@ if(!pHeapGreedyCand->check())
 			step_best = step;
 			trie_best = trie;
 
-			cout << "o " << weight_unsat_best << endl;
+cout << "o " << weight_unsat_best << endl;
 			//cout << "c time " << time_best << endl;
 		
 			answer_writed = 0;
@@ -874,7 +984,8 @@ if(!pHeapGreedyCand->check())
 			if(clock() > time_limit * 1000000.0) return;
 		}	
 
-#ifdef debug_mode		
+#ifdef debug_mode
+/*		
 		if(!(step % 100000))
 				{
 					int z=(int)(clock() / 1000000.0);
@@ -886,13 +997,14 @@ if(!pHeapGreedyCand->check())
 						printf("fs=%7.d, ",int(step/(clock()/1000000.0)));
 						printf("Dw=%8.lld, ",weight_unsat_best);
 						printf("Wu=%8.lld, ",weight_unsat);
-						printf("c0_n=%6.d, ",c0_n);
+						//printf("c0_n=%6.d, ",c0_n);
 						printf("fv=%6.d, ",flipvar);				
 						printf("cutoff=%d, ",time_limit);
 						printf("\n");
 						fflush(stdout);
 					}
 				}
+*/
 	//	getchar();
 #endif	
 		step++;
@@ -950,12 +1062,12 @@ int main(int argc, char* argv[])
 		return -1;
 	}	
     
-	//sscanf(argv[2], "%d", &seed);
-    //srand(seed);
+	sscanf(argv[2], "%d", &seed);
+    srand(seed);
 
-	srand(time(NULL));
+	//srand(time(NULL));
     
-    //sscanf(argv[3], "%d", &time_limit);    
+    sscanf(argv[3], "%d", &time_limit);    
     
 	set_functions();
 	
@@ -1023,14 +1135,14 @@ LL total_flip_time;
 		//	print_solution();
 			//printf("o %lld\n", weight_unsat_best);
 			cout << "s OPTIMUM FOUND" << endl;
-//cout << "c solveTime " << time_best << endl;
-//cout<<"c solveStep "<< step << endl;
+cout << "c solveTime " << time_best << endl;
+cout << "c solveStep " << step << endl;
 			//cout<<"c solveTime "<<comp_time<<endl;
             //cout << "c solveTrie " << trie << endl;
             //printf("c total_flip_time %lld\n", step);
 			//cout << "c totalTrie " << trie << endl;
 		//printf("c time %lf\n", double(clock())/1000000.0);
-//printf("c flip/ms %.2lf\n", double(step) / ((double)(clock())/1000000.0) / 1000.0);
+printf("c flip/ms %.2lf\n", double(step) / ((double)(clock())/1000000.0) / 1000.0);
 		//total_flip_time=(step+2000000000ll*tryi) ;
 			
 			if(!answer_writed)
@@ -1038,7 +1150,7 @@ LL total_flip_time;
 				//printf("o %lld\n",weight_unsat_best);
 				//printf("c time %lf\n",double(clock())/1000000.0);
 				answer_writed = 1;
-				Write_answer();
+				//Write_answer();
 			}
 			
 		//	Write_answer();
@@ -1057,10 +1169,11 @@ LL total_flip_time;
 		{
 			if(Check())
 			{
+//cout << "o " << weight_unsat_best << endl;
 				cout << "s UNKNOWN" << endl;
-//cout << "c solveTime " << time_best << endl;
-//cout << "c searchStep " << step_best << endl;
-//printf("c flip/ms %.2lf\n", (step) / ((double)(clock())/1000000.0) / 1000.0);    	  	
+cout << "c solveTime " << time_best << endl;
+cout << "c searchStep " << step_best << endl;
+printf("c flip/ms %.2lf\n", (step) / ((double)(clock())/1000000.0) / 1000.0);    	  	
 				if(!answer_writed)
 				{
 
@@ -1072,7 +1185,7 @@ LL total_flip_time;
 				//cout << "c totalTries " << trie << endl;
 				//printf("c time %lf\n",double(clock())/1000000.0);
 				answer_writed = 1;
-				Write_answer();
+				//Write_answer();
 				}			
 			
     	  	

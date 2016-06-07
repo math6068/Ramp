@@ -28,7 +28,7 @@ public:
 HeapGreedyCand(bool (*h_worse)(const int &, const int &), int sz)
 {
 	heap_worse = h_worse;
-	greedy_cand_capacity = sz;
+	greedy_cand_capacity = sz + 2;
 	greedy_cand = new int[greedy_cand_capacity];
 	index_in_greedy_cand = new int[greedy_cand_capacity];
 	memset(greedy_cand, 0, sizeof(int) * greedy_cand_capacity);
@@ -125,6 +125,7 @@ void heap_down(int p)
 #ifdef debug_mode
 	if(p <= 0 || p > greedy_cand_size)
 	{
+		cout << "location: " << p << endl;
 		cout << "heap_down: input pointer error" << endl;
 		exit(1);
 	}
