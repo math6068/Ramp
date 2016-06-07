@@ -17,7 +17,7 @@ public:
 	}
 	Bijection(int sz)
 	{
-		array_capacity = sz;
+		array_capacity = sz + 2;
 		array = new int[array_capacity];
 		index_in_array = new int[array_capacity];
 		memset(array, 0, sizeof(int) * (array_capacity));
